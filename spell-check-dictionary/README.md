@@ -1,4 +1,4 @@
-# Explainer: Spell Check Dictionary API
+# Explainer: Spell Check Custom Dictionary API
 
 ## Authors
 - [Ziran Sun](mailto:zsun@igalia.com) 
@@ -9,9 +9,11 @@
 
 ## Introduction
 
-Browsers already provide spell checking, correction, and completion by comparing text against built‑in dictionaries (local or server‑side). This works well for general language, but breaks down on pages that rely heavily on domain‑specific terminology—product names, proper nouns, fictional universes, technical jargon, and other vocabulary that is valid *in context* but absent from standard dictionaries.
+Browsers provide spell checking by comparing text against built‑in dictionaries (local or server‑side). This works well for general language, but breaks down on pages that rely heavily on domain‑specific terminology—product names, proper nouns, fictional universes, technical jargon, and other vocabulary that is valid *in context* but absent from standard dictionaries. 
 
-This explainer proposes a lightweight mechanism for pages to supply such context‑specific terminology to the user agent. By giving the browser a list of known‑valid words, authors can reduce false positives, improve suggestion quality, and open the door to future enhancements that rely on domain‑aware text processing.
+These valid *in context* words are marked by the spellcker for spelling check errors. To allow users to selectively suppress this kind of spell check violations, some browsers introduce the *custom dictionary* concept that allow users to add own customed words via the browsers’ settings panels. For example, in Chromium-based browsers users can manage their custom spellcheck dictionary using the [internal settings page](chrome://settings/editDictionary) or using Context Menu.
+
+This Spell Check Custom Dictionary API provides the functionality as the *custom dictionary* but fills the gap that allows pages to programmatically introduce the dictionary rather than from browsers' settings panels.
 
 ---
 
@@ -23,35 +25,88 @@ Spell checkers routinely flag words that are correct within a site’s domain bu
 - A financial analysis dashboard referencing company‑specific product names or tickers.  
 - A medical or scientific tool using specialized terminology.  
 
-False positives in these contexts are distracting, misleading, and erode user trust. While browsers allow *users* to add custom words globally, there is currently no way for *pages* to provide a per‑document dictionary that applies only within their own context in order to reduce those false positives.
+False positives in these contexts are distracting, misleading, and erode user trust. While browsers allow *users* to add custom words via browser settings panel, there is currently no way for *pages* to provide a custom dictionary programmatically that applies only within their own context in order to reduce those false positives.
 
 Authors need a way to treat domain‑specific words as “known” without requiring user intervention.
 
 ---
 
-## Proposed Approach: SpellCheckDictionary API
+## Golals
 
-We propose introducing a per‑document, transient dictionary exposed via a new interface:
+To provide the functionality as the *custom dictionary* but programmatically via an API. The spell check custom dictionary introduced by this API contains words string(s) that the page would like spell checker to ignore so that they will not be marked for spelling errors.
 
-### `SpellCheckDictionary`
+The *custom dictionary* only contains added word strings. These added words apply across **all** the user enabled languages. The Spell Check Custom dictionary API is in line with *custom dictionary* at this aspect.
+
+The Spell Check Custom dictionary introduced by this API is **an addition** to the spell checking dictionaries, including the *custom dictionary*. It should NOT have impact on the roles of the existing dictionaries in spell check in the browser. The existing spelling check mechanism in browsers work as it is apart from also checking words against the Spell Check Custom dictionary introduced by this API before marking spelling errors.
+
+The dictionary introduced by this API could be used outside of spelling check, such as autocorrect and refining suggestion list. Extending usages could be discussed in future proposals.
+
+---
+
+## Proposed Approach: SpellCheckCustomDictionary API
+
+We propose introducing a per‑document, transient dictionary exposed via a new interface.
+
+### `SpellCheckCustomDictionary`
 
 This interface provides a single observable array:
+```[
+    Exposed=Window,
+    SecureContext,
+    RuntimeEnabled=SpellCheckCustomDictionaryAPI
+] interface SpellCheckCustomDictionary {
+    attribute ObservableArray<DOMString> words;
+};
+```
+
+Example:
+
 
 ```js
-window.spellCheckDictionary.words = [
+window.spellCheckCustomDictionary.words = [
   "Igalia",
   "Wolvic",
-  "SpellCheckDictionary"
+  "SpellCheckCustomDictionary"
 ];
 ```
 
 Key characteristics:
 
 - **Observable array**  
-  The browser’s spell checker observes changes to `.words` and incorporates them into its checks.
+  The browser’s spell checker observes changes to `.words` and incorporates them into its checks. Because the “.words” attribute in spell check Custom dictionary is mutable, we propose to use *ObservableArray* type as suggested [here](https://github.com/WebAudio/web-speech-api/pull/169#issuecomment-3006838443).
+  
+  ObservableArray offers developers a great choices of standard Array methods. This gives us the convinence of manipulating the dictionary with functionalities such  *.addwords()*, *removewords()* and *hasword()* etc. by calling standard Array methods. For example,
+  
+```  
+const phraseData = [
+  { phrase: 'Igalia' },
+  { phrase: 'Wolvic' },
+  { phrase: 'Orca' }
+  
+];
+
+const phraseObjects = phraseData.map(p => p.phrase);
+
+SpellCheckCustomDictionary.words = phraseObjects;
+
+// hasWord()
+SpellCheckCustomDictionary.words.includes("Igalia");
+
+// Second array
+const pokemon_family = ["Pikachu", "Togetic", "Pancham"];
+
+
+// addWords()
+SpellCheckCustomDictionary.words.push(...pokemon_family);
+
+// deleteWords()
+SpellCheckCustomDictionary.words = SpellCheckCustomDictionary.words.filter(item => !pokemon_family.includes(item))
+```
+  
+
 
 - **Per‑document lifecycle**  
-  The dictionary exists only for the lifetime of the document. Closing the tab or navigating away discards it.
+  The dictionary exists only for the lifetime of the document. Closing the tab or navigating away discards it. A detailed description of the Chromium design is available in [The Per‑Document Design in Chromium](https://docs.google.com/document/d/1ND1a1Z4i6kXMHqMwEyRkHSj5VVTWgX5Ya0aNLgVQYGw/edit?tab=t.0#heading=h.kmfizh6cwyy4).
 
 - **Render‑process managed**  
   Unlike user‑managed dictionaries (which live in browser settings and are global), this dictionary is scoped to the page and controlled programmatically.
@@ -64,8 +119,6 @@ Key characteristics:
   - minimal API surface.
 
 Note that "words" is loosely defined and may include spaces or special characters.
-
-A detailed description of the Chromium design is available in [The Per‑Document Design in Chromium](https://docs.google.com/document/d/1ND1a1Z4i6kXMHqMwEyRkHSj5VVTWgX5Ya0aNLgVQYGw/edit?tab=t.0#heading=h.kmfizh6cwyy4).
 
 ---
 
@@ -109,7 +162,6 @@ customDict.words.push(Customphrase('Interop', {boost: 2.0}));
 
 However:
 
-- The shared abstraction becomes little more than a marker interface.  
 - Chromium already ships the biasing feature unprefixed, and Firefox is close behind, limiting room for redesign.  
 - Browsers could choose to treat Web Speech terms as valid for spell checking (or vice versa) *without* additional API surface.
 - The spellcheck dictionary data must be associated with a script realm for privacy and dynamic access, whereas speech data is sent to a unified location and is not dynamically modifiable by script.
@@ -122,7 +174,7 @@ If authors *do* want to share vocabulary between APIs, this is trivial today.  G
 phrase objects have more robust information, it can be as simple as:
 
 ```js
-SpellCheckDictionary.words =
+SpellCheckCustomDictionary.words =
   recognition.phrases.map(it => it.phrase);
 ```
 
@@ -138,7 +190,7 @@ wordData.forEach(item => {
 });
 
 // Apply on assignment
-SpellCheckDictionary.words = dictionaryWords;
+SpellCheckCustomDictionary.words = dictionaryWords;
 
 const recognition = new SpeechRecognition();
 recognition.phrases = phraseObjects;
@@ -175,5 +227,5 @@ We do not foresee accessibility or internationalization issues beyond those alre
 ## References & Acknowledgements
 
 - Chromium design document: [The Per‑Document Design in Chromium](https://docs.google.com/document/d/1ND1a1Z4i6kXMHqMwEyRkHSj5VVTWgX5Ya0aNLgVQYGw/edit?tab=t.0#heading=h.kmfizh6cwyy4)  
-- Web Speech Contextual Biasing API  
+- [Web Speech Contextual Biasing API](https://github.com/WebAudio/web-speech-api/blob/main/explainers/contextual-biasing.md)  
 - Thanks to reviewers and collaborators across browser vendors and standards groups.
