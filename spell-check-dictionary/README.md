@@ -7,6 +7,27 @@
 
 ---
 
+## Table of Contents
+
+- [Introduction](#introduction)
+- [User‑Facing Problems](#userfacing-problems)
+- [Goals](#goals)
+- [Non-Goals](#non-goals)
+- [Proposed Approach](#proposed-approach)
+- [Alternatives Considered](#alternatives-considered)
+  - [1. An `ObservableArray` Type for the Dictionary](#1-an-observablearray-type-for-the-dictionary)
+  - [2. A SetLike interface](#2-a-setlike-interface)
+  - [3. A Unified `CustomDictionary` Across Features](#3-a-unified-customdictionary-across-features)
+  - [4. Declarative `<link>`](#4-declarative-link)
+  - [5. DOM subtree scoped](#5-dom-subtree-scoped)
+- [Accessibility, Internationalization, Privacy & Security](#accessibility-internationalization-privacy--security)
+- [Relationship to Other Tools & APIs](#relationship-to-other-tools--apis)
+- [Stakeholder Feedback / Opposition](#stakeholder-feedback--opposition)
+- [Future Work](#future-work)
+- [References & Acknowledgements](#references--acknowledgements)
+
+---
+
 ## Introduction
 
 Browsers provide spell checking by comparing text against built‑in dictionaries (local or server‑side). This works well for general language, but breaks down on pages that rely heavily on domain‑specific terminology—product names, proper nouns, fictional universes, technical jargon, and other vocabulary that is valid *in context* but absent from standard dictionaries.
@@ -165,7 +186,7 @@ Given this, while we believe it is a potentially worthwhile pursuit in future it
 <details>
 Choosing scope for the API largely depends on use cases. For example, Document-scoped is enough for whole-page vocabularies while subtree-scoped wins when multiple forms on one page need distinct vocabularies, or when web components want isolation. We would say that Document scope and DOM-subtree scope are not mutually exclusive — document scope is just the simplest form, which we can continue to build more specifically on in the future if so desired.
 
-We propose to proceed with document-scoped first as it's a more conservative, easier-to-spec choice but leaves the door open for adding a partial interface HTMLElement later if multi-vocabulary scenarios emerge.
+We propose to proceed with document-scoped first as it's a more conservative, easier-to-spec choice but leaves the door open for adding a partial interface HTMLElement later if multi-vocabulary scenarios emerge (See [Future Work](#future-work))
 </details>
 
 ---
@@ -221,6 +242,25 @@ Writing-assistant extensions such as *Grammarly* and *LanguageTool* run their ow
 
 ---
 
+## Future Work
+
+The current proposal is intentionally minimal in scope. A few directions have come up during discussion that we think are worth pursuing, but only once the core API has shipped and settled:
+
+* **Declarative authoring.** A `<link rel="custom-dictionary" href="...">`-style declarative form (see [Alternatives Considered §4](#4-declarative-link)) could make the common case easier to author and get preloading, CORS, and link semantics for free. We'd want an agreed serialization format before pursuing this, and answer the question about whether more specific subtree-scoped dictionaries make sense.
+
+* **Subtree-scoped dictionaries.** Today the dictionary is scoped to the whole `Document`. A `partial interface HTMLElement` (see [Alternatives Considered §5](#5-dom-subtree-scoped)) could let pages scope distinct vocabularies to individual forms or web components, for cases where a single page legitimately needs more than one vocabulary at once.  Note that this is neither how user dictionaries work today, nor is it currently well supported in spell-checking with regard to languages in general.  We imagine it being rather easy to adapt in terms of API by simply adding a lang as an optional secondary argument to each of the methods.
+
+* **Fuzzy matching.** Today the dictionary is based on exact matches for many reasons laid out in other sections.  This is not always the most author convenient way to express things, and, in fact does not offer real solutions for some languages.  It also means that the list is generally not integrated with spelling _suggestions_.  These are different features though, and at most would ideally share some _source_ list.  We propose that there are opportunities to identify source lists in a few possible ways ([simple partial matching](https://github.com/Igalia/explainers/issues/94), or even fuller solutions like hunspell, etc), and that we can identify these at a later time.  Exact matching should always still be possible, so let's start there.
+
+
+* **Convenience integration with related APIs.** Sharing vocabulary with the [Web Speech Contextual Biasing API](https://github.com/WebAudio/web-speech-api/blob/main/explainers/contextual-biasing.md), translation APIs, or a future [Proofreader API](https://github.com/webmachinelearning/proofreader-api) integration is possible today by passing the same word list to both APIs manually. If this pattern proves common or inefficient in practice, a convenience method to share vocabulary across APIs could be considered later.
+
+* **Resource-limit standardization.** Limits on word count and word length are currently left implementation-defined. As implementations gain experience, it may be worth revisiting whether these limits should be more tightly specified for interoperability.
+
+None of these are required for an initial, useful version of the API, and we'd rather ship a small, well-understood surface first than delay on speculative extensions.
+
+---
+
 ## References & Acknowledgements
 
 * Chromium design document: [The Per‑Document Design in Chromium](https://docs.google.com/document/d/1ND1a1Z4i6kXMHqMwEyRkHSj5VVTWgX5Ya0aNLgVQYGw/edit?tab=t.0#heading=h.kmfizh6cwyy4)
@@ -239,4 +279,3 @@ Writing-assistant extensions such as *Grammarly* and *LanguageTool* run their ow
 * [WebKit standards-position #546 — User dictionary leaks via spelling/grammar pseudo-elements](https://github.com/WebKit/standards-positions/issues/546)
 * [CSS Pseudo-Elements — Highlight Security](https://drafts.csswg.org/css-pseudo/#highlight-security)
 - Many thanks for valuable feedback and advice from reviews and collaborators across standards groups.
-
