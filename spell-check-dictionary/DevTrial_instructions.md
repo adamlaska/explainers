@@ -23,7 +23,7 @@ chrome --enable-blink-features=SpellCheckCustomDictionaryAPI
   Items 5 and 6 decide whether the calls have any effect. They do not throw: ```addWords()``` and ```removeWords()``` return normally and nothing changes.
 
   1. Chrome Canary or Dev, milestone 153 or newer (developed against 153.0.7983.0).
-  2. Desktop — Linux, macOS, Windows, ChromeOS — or Android. Chrome on iOS ships on WebKit rather than Blink, so it has no Blink spell checker and the API is not exposed there.
+  2. Desktop — Linux, macOS, Windows, ChromeOS — or Android. Chrome on iOS ships on WebKit rather than Blink, so it has no Blink spell checker and the API is not exposed there. Android WebView is a separate case with its own setup and its own caveats; see [Android WebView Test Instructions](https://github.com/Igalia/explainers/blob/main/spell-check-dictionary/Android_WebView_Test_instructions.md).
   3. **Secure context**. ```https://``` or ```http://localhost```.
   4. **A Window context**. The interface is ```Exposed=Window```; it is not available in workers.
   5. **Spell checking turned on**. On Windows, Linux and ChromeOS: *chrome://settings/languages → Spell check → Spell check enabled, with at least one language selected and its dictionary downloaded*. On macOS the same *Spell check* toggle applies, but there is no language list or downloadable dictionary — checking is done by the system ```NSSpellChecker``` and the language follows the macOS setting.
