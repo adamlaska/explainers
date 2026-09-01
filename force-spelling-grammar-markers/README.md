@@ -30,6 +30,7 @@ The existing WPT reftests for the related pseudo-elements (`css/css-pseudo/spell
  Engines have solved this for their own test suites with internal hooks that set markers directly:
  - [Blink's `internals.setMarker()`](https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/testing/internals.cc;l=1309)
  - [WebKit's `Internals.setMarkerFor()`](https://github.com/WebKit/WebKit/blob/fd86b54293b5d6c3e9b9a07b5373afa488456f66/Source/WebCore/testing/Internals.cpp#L3143)
+
 These exist only in test builds and are currently unreachable from release browsers under WebDriver. See [wpt#30863](https://github.com/web-platform-tests/wpt/issues/30863).
 
 This proposal introduces a pair of WebDriver commands exposed to WPT as testdriver.js methods that directly place and clear spelling/grammar markers, thus making the marker dependent half of the feature family testable with ordinary reftests.
