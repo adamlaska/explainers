@@ -67,14 +67,15 @@ Two WebDriver commands, both surfaced in testdriver.js:
 
 ```js
 // Create a marker of the specified type over the given range
-await test_driver.set_text_marker({
-  type: "spelling",     // can be either "spelling" or "grammar"
+await test_driver.set_text_marker(
   element,              // the container element
+  "spelling",           // can be either "spelling" or "grammar"
   start,                // UTF-16 offsets into the element's rendered text
-  end,
-});
+  end
+);
 
-// Remove all markers previously placed by set_text_marker for the document
+// Remove all markers previously placed by set_text_marker in the top-level
+// browsing context containing context
 await test_driver.clear_text_markers(context);
 ```
 
